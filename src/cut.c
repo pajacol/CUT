@@ -28,6 +28,9 @@ struct proc_stat
     int guest_nice;
 };
 
+/* Hang watchdog */
+static int start_time;
+
 /* Threads */
 static thrd_t threads[5];
 static int work_done[5];
@@ -104,6 +107,7 @@ static int reader(void *arg)
         /* Notify Watchdog */
         if(enqueue(queue_all_watchdog, watchdog_buf))
         {
+            printf("Watchdog hanged, information from Reader\n\n");
             /* Watchdog queue full, discard data */
             free(watchdog_buf);
         }
@@ -175,6 +179,7 @@ static int analyzer(void *arg)
         *watchdog_buf = 1;
         if(enqueue(queue_all_watchdog, watchdog_buf))
         {
+            printf("Watchdog hanged, information from Analyzer\n\n");
             /* Watchdog queue full, discard data */
             free(watchdog_buf);
         }
@@ -240,6 +245,7 @@ static int printer(void *arg)
         *watchdog_buf = 2;
         if(enqueue(queue_all_watchdog, watchdog_buf))
         {
+            printf("Watchdog hanged, information from Printer\n\n");
             /* Watchdog queue full, discard data */
             free(watchdog_buf);
         }
@@ -307,6 +313,13 @@ static int watchdog(void *arg)
         }
         /* Wait 20 ms */
         nanosleep((struct timespec[]){{0, 20000000}}, NULL);
+
+        /* HANG THREAD */
+        if(time(NULL) - start_time > 5)
+        {
+            printf("Hang Test\n\n");
+            sleep(1000);
+        }
     }
     return 0;
     work_done[3] = 1;
@@ -339,17 +352,12 @@ static int logger(void *arg)
         *watchdog_buf = 3;
         if(enqueue(queue_all_watchdog, watchdog_buf))
         {
+            printf("Watchdog hanged, information from Logger\n\n");
             /* Watchdog queue full, discard data */
             free(watchdog_buf);
         }
         /* Wait 50 ms */
         nanosleep((struct timespec[]){{0, 50000000}}, NULL);
-
-        /* HANG THREAD */
-        if(rand() % 10 == 4)
-        {
-            sleep(10);
-        }
     }
     close(fd);
     work_done[4] = 1;
@@ -360,6 +368,8 @@ static int logger(void *arg)
 int main(int argc, char *argv[])
 {
     int i;
+
+    start_time = time(NULL);
 
     /* Number of cores */
     cores = sysconf(_SC_NPROCESSORS_ONLN);
