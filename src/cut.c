@@ -29,18 +29,18 @@ struct proc_stat
 };
 
 /* Variable to notify threads to finish */
-volatile int finish = 0;
+static volatile int finish = 0;
 
 /* Queues for communication between threads */
-struct queue *queue_reader_analyzer;
-struct queue *queue_analyzer_printer;
-struct queue *queue_all_watchdog;
-struct queue *queue_all_logger;
+static struct queue *queue_reader_analyzer;
+static struct queue *queue_analyzer_printer;
+static struct queue *queue_all_watchdog;
+static struct queue *queue_all_logger;
 
 /* Number of cores */
-int cores;
+static int cores;
 
-double cpu_use(const struct proc_stat *current, const struct proc_stat *previous)
+static double cpu_use(const struct proc_stat *current, const struct proc_stat *previous)
 {
     int Idle, NonIdle, Total;
     int PrevIdle, PrevNonIdle, PrevTotal;
@@ -61,14 +61,14 @@ double cpu_use(const struct proc_stat *current, const struct proc_stat *previous
     return 100.0 * (TotalD - IdleD) / TotalD;
 }
 
-void handler(int signum)
+static void handler(int signum)
 {
     finish = 1;
     return;
     (void)signum;
 }
 
-int reader(void *arg)
+static int reader(void *arg)
 {
     int fd = open("/proc/stat", O_RDONLY | O_NONBLOCK);
     char *buf, *logger_buf;
@@ -111,7 +111,7 @@ int reader(void *arg)
     (void)arg;
 }
 
-int analyzer(void *arg)
+static int analyzer(void *arg)
 {
     char *buf, *logger_buf;
     int i, offset, size, *watchdog_buf;
@@ -184,7 +184,7 @@ int analyzer(void *arg)
     (void)arg;
 }
 
-int printer(void *arg)
+static int printer(void *arg)
 {
     char *buf, *logger_buf;
     int i, offset, size, offset2, size2, *watchdog_buf;
@@ -244,7 +244,7 @@ int printer(void *arg)
     (void)arg;
 }
 
-int watchdog(void *arg)
+static int watchdog(void *arg)
 {
     int *buf, i;
     struct timeval threads[4] = {{0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}};
@@ -276,7 +276,7 @@ int watchdog(void *arg)
     (void)arg;
 }
 
-int logger(void *arg)
+static int logger(void *arg)
 {
     char *buf = malloc(0x1000);
     int len, fd, *watchdog_buf;
