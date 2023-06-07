@@ -359,7 +359,7 @@ int main(int argc, char *argv[])
     cores = sysconf(_SC_NPROCESSORS_ONLN);
 
     /* Handler for SIGTERM */
-    signal(SIGINT, handler);
+    signal(SIGTERM, handler);
 
     /* Queue for Reader-Analyzer */
     queue_reader_analyzer = new_queue();
