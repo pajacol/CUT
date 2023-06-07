@@ -86,7 +86,8 @@ static int reader(void *arg)
         /* Read whole /proc/stat */
         read_file(fd, buf);
         /* Copy for Logger */
-        strcpy(logger_buf, buf);
+        *logger_buf = 0;
+        strcpy(logger_buf + 1, buf);
         /* Set for Watchdog */
         *watchdog_buf = 0;
         /* Check Reader-Analyzer queue */
@@ -156,7 +157,8 @@ static int analyzer(void *arg)
             /* Allocate buffer */
             logger_buf = malloc(0x1000);
             /* Copy data for Logger */
-            strcpy(logger_buf, buf);
+            *logger_buf = 1;
+            strcpy(logger_buf + 1, buf);
             /* Check Analyzer-Printer queue */
             if(enqueue(queue_analyzer_printer, buf))
             {
@@ -207,9 +209,10 @@ static int printer(void *arg)
             {
                 /* Allocate buffer for Logger */
                 logger_buf = malloc(0x1000);
+                *logger_buf = 2;
                 /* Print data */
                 offset = 0;
-                offset2 = 0;
+                offset2 = 1;
                 for(i = 0; i < cores; ++i)
                 {
                     sscanf(&buf[offset], "%lf%n", &use, &size);
@@ -254,6 +257,7 @@ static int printer(void *arg)
 static int watchdog(void *arg)
 {
     int *buf, i;
+    char *logger_buf;
     struct timeval threads_times[4] = {{0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}};
     struct timeval tv;
     while(!finish)
@@ -263,6 +267,17 @@ static int watchdog(void *arg)
         {
             if(tv.tv_sec - threads_times[i].tv_sec > 2 || (tv.tv_sec - threads_times[i].tv_sec == 2 && tv.tv_usec - threads_times[i].tv_usec >= 0))
             {
+                /* Notify Logger */
+                logger_buf = malloc(0x1000);
+                *logger_buf = 3;
+                strcpy(logger_buf + 1, "Program hanged!\n");
+                if(enqueue(queue_all_logger, logger_buf))
+                {
+                    /* Discard data, deallocate buffer */
+                    free(logger_buf);
+                }
+                /* Give Logger time to react */
+                nanosleep((struct timespec[]){{1, 100000000}}, NULL);
                 /* Program hanged */
                 finish = 1;
                 /* Give threads some time to react */
@@ -327,9 +342,24 @@ static int logger(void *arg)
         while((buf = dequeue(queue_all_logger)) != NULL)
         {
             /* Got data from queue */
-            len = strlen(buf);
+            len = strlen(buf + 1);
             /* Write to file */
-            write(fd, buf, len);
+            switch(*buf)
+            {
+                case 0:
+                    write(fd, "Data from Reader\n", 17);
+                    break;
+                case 1:
+                    write(fd, "Data from Analyzer\n", 19);
+                    break;
+                case 2:
+                    write(fd, "Data from Printer\n", 18);
+                    break;
+                case 3:
+                    write(fd, "Data from Watchdog\n", 19);
+                    break;
+            }
+            write(fd, buf + 1, len);
             write(fd, "\n\n", 2);
             /* Deallocate buffer */
             free(buf);
