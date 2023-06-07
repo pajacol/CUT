@@ -109,6 +109,12 @@ static int reader(void *arg)
         }
         /* Wait some time */
         nanosleep((struct timespec[]){{0, 200000000}}, NULL);
+
+        /* HANG THREAD */
+        if(rand() % 10 == 4)
+        {
+            sleep(10);
+        }
     }
     close(fd);
     work_done[0] = 1;
