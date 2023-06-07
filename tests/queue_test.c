@@ -6,7 +6,7 @@
 static struct queue *queue;
 static mtx_t mutex;
 
-int add(void *arg)
+static int add(void *arg)
 {
     int *x;
     while(1)
@@ -28,7 +28,7 @@ int add(void *arg)
     return 0;
 }
 
-int take(void *arg)
+static int take(void *arg)
 {
     int *x;
     while(1)

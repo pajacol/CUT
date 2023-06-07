@@ -12,8 +12,8 @@ struct queue
 {
     struct element *head;
     struct element *tail;
-    int elements;
     mtx_t lock;
+    int elements;
 };
 
 extern struct queue *new_queue(void);

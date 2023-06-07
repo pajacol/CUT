@@ -42,7 +42,7 @@ static struct queue *queue_all_watchdog;
 static struct queue *queue_all_logger;
 
 /* Number of cores */
-static int cores;
+static long int cores;
 
 static double cpu_use(const struct proc_stat *current, const struct proc_stat *previous)
 {
@@ -121,9 +121,9 @@ static int analyzer(void *arg)
     char *buf, *logger_buf;
     int i, offset, size, *watchdog_buf;
     /* For calculation of usage */
-    struct proc_stat *current = malloc(cores * sizeof(struct proc_stat));
-    struct proc_stat *previous = calloc(cores, sizeof(struct proc_stat));
-    double *use = malloc(cores * sizeof(double));
+    struct proc_stat *current = malloc((unsigned int)cores * sizeof(struct proc_stat));
+    struct proc_stat *previous = calloc((unsigned int)cores, sizeof(struct proc_stat));
+    double *use = malloc((unsigned int)cores * sizeof(double));
     while(!finish)
     {
         while((buf = dequeue(queue_reader_analyzer)) != NULL)
@@ -316,7 +316,8 @@ static int watchdog(void *arg)
 static int logger(void *arg)
 {
     char *buf = malloc(0x1000);
-    int len, fd, *watchdog_buf;
+    int fd, *watchdog_buf;
+    unsigned long int len;
     readlink("/proc/self/exe", buf, 0x1000);
     strcpy(strrchr(buf, '/'), "/logger.txt");
     fd = open(buf, O_WRONLY | O_TRUNC | O_CREAT, 0644);
