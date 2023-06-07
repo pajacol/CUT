@@ -245,12 +245,6 @@ static int printer(void *arg)
         }
         /* Wait some time */
         nanosleep((struct timespec[]){{0, 200000000}}, NULL);
-
-        /* HANG THREAD */
-        if(rand() % 10 == 4)
-        {
-            sleep(10);
-        }
     }
     work_done[2] = 1;
     return 0;
@@ -350,6 +344,12 @@ static int logger(void *arg)
         }
         /* Wait 50 ms */
         nanosleep((struct timespec[]){{0, 50000000}}, NULL);
+
+        /* HANG THREAD */
+        if(rand() % 10 == 4)
+        {
+            sleep(10);
+        }
     }
     close(fd);
     work_done[4] = 1;
