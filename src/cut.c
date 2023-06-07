@@ -180,12 +180,6 @@ static int analyzer(void *arg)
         }
         /* Wait some time */
         nanosleep((struct timespec[]){{0, 200000000}}, NULL);
-
-        /* HANG THREAD */
-        if(rand() % 10 == 4)
-        {
-            sleep(10);
-        }
     }
     /* Deallocate memory */
     free(current);
@@ -251,6 +245,12 @@ static int printer(void *arg)
         }
         /* Wait some time */
         nanosleep((struct timespec[]){{0, 200000000}}, NULL);
+
+        /* HANG THREAD */
+        if(rand() % 10 == 4)
+        {
+            sleep(10);
+        }
     }
     work_done[2] = 1;
     return 0;
