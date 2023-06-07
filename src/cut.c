@@ -28,6 +28,10 @@ struct proc_stat
     int guest_nice;
 };
 
+/* Threads */
+static thrd_t threads[5];
+static int work_done[5];
+
 /* Variable to notify threads to finish */
 static volatile int finish = 0;
 
@@ -107,6 +111,7 @@ static int reader(void *arg)
         nanosleep((struct timespec[]){{0, 200000000}}, NULL);
     }
     close(fd);
+    work_done[0] = 1;
     return 0;
     (void)arg;
 }
@@ -180,6 +185,7 @@ static int analyzer(void *arg)
     free(current);
     free(previous);
     free(use);
+    work_done[1] = 1;
     return 0;
     (void)arg;
 }
@@ -240,6 +246,7 @@ static int printer(void *arg)
         /* Wait some time */
         nanosleep((struct timespec[]){{0, 200000000}}, NULL);
     }
+    work_done[2] = 1;
     return 0;
     (void)arg;
 }
@@ -247,17 +254,46 @@ static int printer(void *arg)
 static int watchdog(void *arg)
 {
     int *buf, i;
-    struct timeval threads[4] = {{0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}};
+    struct timeval threads_times[4] = {{0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}, {0x7FFFFFFF, 0}};
     struct timeval tv;
     while(!finish)
     {
         gettimeofday(&tv, NULL);
         for(i = 0; i < 4; ++i)
         {
-            if(tv.tv_sec - threads[i].tv_sec > 2 || (tv.tv_sec - threads[i].tv_sec == 2 && tv.tv_usec - threads[i].tv_usec >= 0))
+            if(tv.tv_sec - threads_times[i].tv_sec > 2 || (tv.tv_sec - threads_times[i].tv_sec == 2 && tv.tv_usec - threads_times[i].tv_usec >= 0))
             {
                 /* Program hanged */
-                fputs("Program hanged!\n", stderr);
+                finish = 1;
+                /* Give threads some time to react */
+                nanosleep((struct timespec[]){{1, 0}}, NULL);
+                /* Check threads response to termination request */
+                if(!work_done[0])
+                {
+                    fputs("Reader not responsive!\n", stderr);
+                }
+                if(!work_done[1])
+                {
+                    fputs("Analyzer not responsive!\n", stderr);
+                }
+                if(!work_done[2])
+                {
+                    fputs("Printer not responsive!\n", stderr);
+                }
+                if(!work_done[4])
+                {
+                    fputs("Logger not responsive!\n", stderr);
+                }
+                /* Delete what can be safely deleted */
+                if(work_done[0] && work_done[1])
+                {
+                    delete_queue(queue_reader_analyzer);
+                }
+                if(work_done[1] && work_done[2])
+                {
+                    delete_queue(queue_analyzer_printer);
+                }
+                /* Terminate with error */
                 exit(1);
             }
         }
@@ -265,7 +301,7 @@ static int watchdog(void *arg)
         if(buf != NULL)
         {
             /* Got data from queue */
-            threads[*buf] = tv;
+            threads_times[*buf] = tv;
             /* Deallocate buffer */
             free(buf);
         }
@@ -273,6 +309,7 @@ static int watchdog(void *arg)
         nanosleep((struct timespec[]){{0, 20000000}}, NULL);
     }
     return 0;
+    work_done[3] = 1;
     (void)arg;
 }
 
@@ -308,6 +345,7 @@ static int logger(void *arg)
         nanosleep((struct timespec[]){{0, 50000000}}, NULL);
     }
     close(fd);
+    work_done[4] = 1;
     return 0;
     (void)arg;
 }
@@ -315,7 +353,6 @@ static int logger(void *arg)
 int main(int argc, char *argv[])
 {
     int i;
-    thrd_t threads[5];
 
     /* Number of cores */
     cores = sysconf(_SC_NPROCESSORS_ONLN);
