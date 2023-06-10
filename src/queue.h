@@ -13,6 +13,8 @@ struct queue
     struct element *head;
     struct element *tail;
     mtx_t lock;
+    cnd_t empty;
+    cnd_t full;
     int elements;
 };
 

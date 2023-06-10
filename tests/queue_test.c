@@ -13,7 +13,6 @@ static int add(void *arg)
     {
         x = malloc(sizeof(int));
         *x = rand();
-        mtx_lock(&mutex);
         if(enqueue(queue, x))
         {
             // printf("Adding thread %ld, adding failed\n", (long int)arg);
@@ -23,7 +22,6 @@ static int add(void *arg)
         {
             printf("Adding thread %ld, added value %d\n", (long int)arg, *x);
         }
-        mtx_unlock(&mutex);
     }
     return 0;
 }
@@ -33,7 +31,6 @@ static int take(void *arg)
     int *x;
     while(1)
     {
-        mtx_lock(&mutex);
         if((x = dequeue(queue)))
         {
             printf("Taking thread %ld, taken value %d\n", (long int)arg, *x);
@@ -43,7 +40,6 @@ static int take(void *arg)
         {
             // printf("Taking thread %ld, taking failed\n", (long int)arg);
         }
-        mtx_unlock(&mutex);
     }
     return 0;
 }
