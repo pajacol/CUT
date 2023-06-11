@@ -1,8 +1,7 @@
 #include <stdlib.h>
+#include <string.h>
 #include <threads.h>
 #include "queue.h"
-
-#include <stdio.h>
 
 #define MAX_ITEMS 32
 
@@ -32,21 +31,19 @@ void delete_queue(struct queue *queue)
     return;
 }
 
-int enqueue(struct queue *queue, void *data)
+void enqueue(struct queue *queue, const void *data, int len)
 {
     struct element *element;
     mtx_lock(&queue->lock);
-fprintf(stderr, "Try adding, queue elements % 2d, queue: %p\n", queue->elements, (void*)queue);
-// Spurious wakeup on 'while' changed to 'if'
     while(queue->elements == MAX_ITEMS)
     {
-fprintf(stderr, "Blocked adding, queue: %p\n", (void*)queue);
         cnd_wait(&queue->full, &queue->lock);
-fprintf(stderr, "Unlocked adding, queue: %p\n", (void*)queue);
     }
     element = malloc(sizeof(struct element));
     element->next = NULL;
-    element->data = data;
+    element->len = len;
+    element->data = malloc((unsigned long)len);
+    memcpy(element->data, data, (unsigned long)len);
     if(queue->elements == 0)
     {
         queue->tail = element;
@@ -57,27 +54,23 @@ fprintf(stderr, "Unlocked adding, queue: %p\n", (void*)queue);
     }
     queue->head = element;
     ++queue->elements;
-fprintf(stderr, "Adding, queue elements % 2d, queue: %p\n", queue->elements, (void*)queue);
     cnd_signal(&queue->empty);
     mtx_unlock(&queue->lock);
-    return 0;
+    return;
 }
 
-void *dequeue(struct queue *queue)
+void dequeue(struct queue *queue, void *data, int *len)
 {
-    void *data;
     struct element *element;
     mtx_lock(&queue->lock);
-fprintf(stderr, "Try taking, queue elements % 2d, queue: %p\n", queue->elements, (void*)queue);
-// Spurious wakeup on 'while' changed to 'if'
     while(queue->elements == 0)
     {
-fprintf(stderr, "Blocked taking, queue: %p\n", (void*)queue);
         cnd_wait(&queue->empty, &queue->lock);
-fprintf(stderr, "Unlocked taking, queue: %p\n", (void*)queue);
     }
     element = queue->tail;
-    data = element->data;
+    memcpy(data, element->data, (unsigned long)element->len);
+    free(element->data);
+    *len = element->len;
     queue->tail = element->next;
     free(element);
     --queue->elements;
@@ -85,8 +78,12 @@ fprintf(stderr, "Unlocked taking, queue: %p\n", (void*)queue);
     {
         queue->head = NULL;
     }
-fprintf(stderr, "Taking, queue elements % 2d, queue: %p\n", queue->elements, (void*)queue);
     cnd_signal(&queue->full);
     mtx_unlock(&queue->lock);
-    return data;
+    return;
+}
+
+int queue_length(struct queue *queue)
+{
+    return queue->elements;
 }

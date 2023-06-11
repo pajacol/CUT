@@ -6,6 +6,7 @@ struct element
 {
     struct element *next;
     void *data;
+    int len;
 };
 
 struct queue
@@ -15,10 +16,11 @@ struct queue
     mtx_t lock;
     cnd_t empty;
     cnd_t full;
-    int elements;
+    volatile int elements;
 };
 
 extern struct queue *new_queue(void);
 extern void delete_queue(struct queue *queue);
-extern int enqueue(struct queue *queue, void *data);
-extern void *dequeue(struct queue *queue);
+extern void enqueue(struct queue *queue, const void *data, int len);
+extern void dequeue(struct queue *queue, void *data, int *len);
+extern int queue_length(struct queue *queue);
